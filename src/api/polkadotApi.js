@@ -1,11 +1,14 @@
 const { ApiPromise, WsProvider } = require('@polkadot/api');
 const logger = require('../utils/logger');
+const ConfigLoader = require('../config/configLoader');
 
 class PolkadotAPI {
     constructor(rpcUrl) {
         this.rpcUrl = rpcUrl;
         this.api = null;
         this.isConnecting = false;
+        this.configLoader = new ConfigLoader(process.env.CONFIG_PATH || 'config/config.yaml');
+        this.paramResolvers = this.configLoader.getParamResolvers();
     }
 
     async connect() {
@@ -45,15 +48,14 @@ class PolkadotAPI {
         return header.number.toNumber();
     }
 
-    async resolveParam(paramName) {
+    async resolveParam(pallet, paramName) {
         if (!this.api) await this.connect();
-        const paramValue = await this.api.query.staking[paramName]();
-        if (paramName === 'activeEra') {
-            return paramValue.unwrapOrDefault().index.toNumber();
-        } else if (paramName === 'currentEra') {
-            return paramValue.unwrapOrDefault().toNumber();
+        const paramValue = await this.api.query[pallet][paramName]();
+        const resolver = this.paramResolvers[pallet] && this.paramResolvers[pallet][paramName];
+        if (resolver) {
+            return eval(`paramValue.${resolver}`);
         } else {
-            throw new Error(`Unable to resolve parameter: ${paramName}`);
+            throw new Error(`Unable to resolve parameter: ${paramName} for pallet: ${pallet}`);
         }
     }
 
@@ -75,7 +77,7 @@ class PolkadotAPI {
             const resolvedParams = await Promise.all(
                 params.map(async param => {
                     if (typeof param === 'string') {
-                        return await this.resolveParam(param);
+                        return await this.resolveParam(pallet, param);
                     }
                     return param;
                 })

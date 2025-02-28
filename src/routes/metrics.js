@@ -51,8 +51,10 @@ router.get('/metrics', async (req, res) => {
                 metricsOutput += `# TYPE ${storageItem.name} gauge\n`;
 
                 if (storageItem.name === 'erasRewardPoints') {
+                    const eraType = params.includes('activeEra') ? 'activeEra' : 'currentEra';
+                    console.log(`Evaluating erasRewardPoints for ${eraType}`);
                     for (const [validator, points] of Object.entries(value.individual)) {
-                        metricsOutput += `${storageItem.name}{chain="${chainName}",validator="${validator}"} ${points}\n`;
+                        metricsOutput += `${storageItem.name}{chain="${chainName}",era="${eraType}",validator="${validator}"} ${points}\n`;
                     }
                 } else {
                     metricsOutput += `${storageItem.name}{chain="${chainName}"} ${value}\n`;
