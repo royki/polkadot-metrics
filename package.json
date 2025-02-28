@@ -1,0 +1,29 @@
+{
+  "name": "polkadot-metrics",
+  "version": "1.0.0",
+  "description": "A Node.js application to collect and expose Polkadot blockchain metrics.",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon",
+    "prod": "NODE_ENV=production node src/app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@influxdata/influxdb-client": "1.35.0",
+    "@polkadot/api": "15.7.1",
+    "dotenv": "16.4.7",
+    "express": "4.21.2",
+    "js-yaml": "4.1.0",
+    "winston": "3.17.0"
+  },
+  "devDependencies": {
+    "jest": "29.7.0",
+    "nodemon": "3.1.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "@royki",
+  "license": "MIT"
+}
