@@ -68,7 +68,7 @@ class PolkadotAPI {
 
             const storage = this.api.query[pallet][storageItem];
             if (!storage) {
-                throw new Error(`Storage item ${pallet}.${storageItem} not found`);
+                throw new Error(`Invalid storage item: ${pallet}.${storageItem}`);
             }
 
             // Resolve parameters if they are parameter names
@@ -83,6 +83,9 @@ class PolkadotAPI {
 
             logger.debug(`Fetching ${pallet}.${storageItem} with params: ${resolvedParams}`);
             const result = await storage(...resolvedParams);
+
+            // Log the API response for verification
+            logger.debug(`API response for ${pallet}.${storageItem}: ${JSON.stringify(result.toJSON())}`);
 
             // Handle specific return types
             if (storageItem === 'erasRewardPoints') {
@@ -102,16 +105,18 @@ class PolkadotAPI {
     async validateMetrics(metrics) {
         if (!this.api) await this.connect();
 
-        for (const metric of metrics) {
-            const { pallet, storage_item } = metric;
-            if (!this.api.query[pallet]) {
-                logger.error(`Invalid pallet: ${pallet}`);
-                continue;
-            }
+        for (const palletConfig of metrics) {
+            for (const storageItem of palletConfig.storage_items) {
+                const { name } = storageItem;
+                if (!this.api.query[palletConfig.pallet]) {
+                    logger.error(`Invalid pallet: ${palletConfig.pallet}`);
+                    continue;
+                }
 
-            if (!this.api.query[pallet][storage_item]) {
-                logger.error(`Invalid storage item: ${pallet}.${storage_item}`);
-                logger.info(`Available items for ${pallet}: ${Object.keys(this.api.query[pallet])}`);
+                if (!this.api.query[palletConfig.pallet][name]) {
+                    logger.error(`Invalid storage item: ${palletConfig.pallet}.${name}`);
+                    logger.info(`Available items for ${palletConfig.pallet}: ${Object.keys(this.api.query[palletConfig.pallet])}`);
+                }
             }
         }
     }

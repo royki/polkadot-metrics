@@ -13,26 +13,25 @@ metrics_backend:
     bucket: "your-bucket"
 
 metrics:
-  - name: "active_era"
-    pallet: "staking"
-    storage_item: "activeEra"
-  - name: "current_era"
-    pallet: "staking"
-    storage_item: "currentEra"
-  - name: "eras_reward_points_active"
-    pallet: "staking"
-    storage_item: "erasRewardPoints"
-    params: ["activeEra"]
-  - name: "eras_reward_points_current"
-    pallet: "staking"
-    storage_item: "erasRewardPoints"
-    params: ["currentEra"]
-  - name: "session_index"
-    pallet: "session"
-    storage_item: "currentIndex"
+  - pallet: "session"
+    storage_items:
+      - name: "currentIndex"
+      # - name: "validators"
+  - pallet: "system"
+    storage_items:
+      - name: "number"
+      # - name: "parentHash"
+  - pallet: "staking"
+    storage_items:
+      - name: "activeEra"
+      - name: "currentEra"
+      # - name: "erasRewardPoints"
+      #   params: ["activeEra"]
+      # - name: "erasRewardPoints"
+      #   params: ["currentEra"]
 
 logging:
-  level: "debug"  # Options: "debug", "info", "warn", "error"
+  level: "info"  # Options: "debug", "info", "warn", "error"
   log_to_file: false
   log_file: "logs/app.log"
   error_log_file: "logs/error.log"
