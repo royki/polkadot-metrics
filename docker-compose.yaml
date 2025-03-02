@@ -29,6 +29,20 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
     restart: unless-stopped
 
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml
+      - alertmanager-data:/data
+    ports:
+      - 9093:9093
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yaml'
+      - '--log.level=debug'
+      - '--storage.path=/data'
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -39,7 +53,7 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
-      - ./monitoring/grafana/provisioning/datasource.yaml:/etc/prometheus/datasources/datasource.yaml
+      - ./monitoring/grafana/provisioning/datasources/:/etc/prometheus/datasources/datasource.yaml
     env_file:
       - ./monitoring/grafana/config.monitoring
     restart: unless-stopped
@@ -47,3 +61,4 @@ services:
 volumes:
   prometheus-data: {}
   grafana-data: {}
+  alertmanager-data: {}

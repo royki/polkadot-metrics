@@ -29,3 +29,11 @@ scrape_configs:
     static_configs:
       - targets:
         - 'polkadot-metrics-exporter:8080'
+
+rule_files:
+  - '/etc/prometheus/alert_rules.yaml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
