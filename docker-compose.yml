@@ -1,12 +1,49 @@
-name: polkadot-metrcis
+name: polkadot-metrics-exporter
 
 services:
   app:
     build: .
     ports:
       - "8080:8080"
+    image: polkadot-metrics-exporter:v1.0.0
+    container_name: polkadot-metrics-exporter
     volumes:
-      - ./config:/app/config
+      - ./config/config.yaml:/app/config/config.yaml
     environment:
-      CONFIG_PATH: config/config.yaml
-    command: ["node", "src/app.js", "${CONFIG_PATH}"]
+      CONFIG_PATH: /app/config/config.yaml
+    command: ["node", "src/app.js", "/app/config/config.yaml"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus/:/etc/prometheus/
+      - prometheus-data:/prometheus
+    ports:
+      - 9090:9090
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=2d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
+      - ./monitoring/grafana/provisioning/datasource.yaml:/etc/prometheus/datasources/datasource.yaml
+    env_file:
+      - ./monitoring/grafana/config.monitoring
+    restart: unless-stopped
+
+volumes:
+  prometheus-data: {}
+  grafana-data: {}
