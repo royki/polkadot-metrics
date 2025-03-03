@@ -25,8 +25,10 @@ const metricsManager = new MetricsManager(backendType, influxConfig);
 })();
 
 // Define metrics dynamically
-metricsConfig.forEach(metric => {
-    metricsManager.defineMetric(metric.name, `${metric.pallet}.${metric.storage_item}`, ['chain', 'block_number']);
+metricsConfig.forEach(palletConfig => {
+    palletConfig.storage_items.forEach(storageItem => {
+        metricsManager.defineMetric(storageItem.name, `${palletConfig.pallet}.${storageItem.name}`, ['chain', 'block_number']);
+    });
 });
 
 router.get('/metrics', async (req, res) => {
@@ -36,23 +38,25 @@ router.get('/metrics', async (req, res) => {
         const blockNumber = await polkadotApi.fetchBlockNumber();
 
         let metricsOutput = '';
-        for (const metric of metricsConfig) {
-            const params = Array.isArray(metric.params) ? metric.params : [];
-            const value = await polkadotApi.fetchMetric(
-                metric.pallet,
-                metric.storage_item,
-                params
-            );
+        for (const palletConfig of metricsConfig) {
+            for (const storageItem of palletConfig.storage_items) {
+                const params = storageItem.params || [];
+                const value = await polkadotApi.fetchMetric(
+                    palletConfig.pallet,
+                    storageItem.name,
+                    params
+                );
 
-            metricsOutput += `# HELP ${metric.name} ${metric.name.replace('_', ' ')}\n`;
-            metricsOutput += `# TYPE ${metric.name} gauge\n`;
+                metricsOutput += `# HELP ${storageItem.name} ${storageItem.name.replace('_', ' ')}\n`;
+                metricsOutput += `# TYPE ${storageItem.name} gauge\n`;
 
-            if (metric.storage_item === 'erasRewardPoints') {
-                for (const [validator, points] of Object.entries(value.individual)) {
-                    metricsOutput += `${metric.name}{chain="${chainName}",validator="${validator}"} ${points}\n`;
+                if (storageItem.name === 'erasRewardPoints') {
+                    for (const [validator, points] of Object.entries(value.individual)) {
+                        metricsOutput += `${storageItem.name}{chain="${chainName}",validator="${validator}"} ${points}\n`;
+                    }
+                } else {
+                    metricsOutput += `${storageItem.name}{chain="${chainName}"} ${value}\n`;
                 }
-            } else {
-                metricsOutput += `${metric.name}{chain="${chainName}"} ${value}\n`;
             }
         }
 

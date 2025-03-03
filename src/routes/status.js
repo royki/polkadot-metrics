@@ -16,14 +16,16 @@ router.get('/status', async (req, res) => {
         const blockNumber = await polkadotApi.fetchBlockNumber();
 
         const metricsData = {};
-        for (const metric of metricsConfig) {
-            const params = Array.isArray(metric.params) ? metric.params : [];
-            const value = await polkadotApi.fetchMetric(
-                metric.pallet,
-                metric.storage_item,
-                params
-            );
-            metricsData[metric.name] = { value, block_number: blockNumber };
+        for (const palletConfig of metricsConfig) {
+            for (const storageItem of palletConfig.storage_items) {
+                const params = storageItem.params || [];
+                const value = await polkadotApi.fetchMetric(
+                    palletConfig.pallet,
+                    storageItem.name,
+                    params
+                );
+                metricsData[storageItem.name] = { value, block_number: blockNumber };
+            }
         }
 
         res.json({
