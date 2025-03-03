@@ -45,6 +45,10 @@ class ConfigLoader {
         return this.config.metrics;
     }
 
+    getParamResolvers() {
+        return this.config.param_resolvers;
+    }
+
     getLoggingConfig() {
         return this.config.logging;
     }

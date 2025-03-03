@@ -1,0 +1,64 @@
+name: polkadot-metrics-exporter
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    image: polkadot-metrics-exporter:v1.0.0
+    container_name: polkadot-metrics-exporter
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml
+    environment:
+      CONFIG_PATH: /app/config/config.yaml
+    command: ["node", "src/app.js", "/app/config/config.yaml"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus/:/etc/prometheus/
+      - prometheus-data:/prometheus
+    ports:
+      - 9090:9090
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=2d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml
+      - alertmanager-data:/data
+    ports:
+      - 9093:9093
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yaml'
+      - '--log.level=debug'
+      - '--storage.path=/data'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/
+      - ./monitoring/grafana/provisioning/datasources/:/etc/prometheus/datasources/datasource.yaml
+    env_file:
+      - ./monitoring/grafana/config.monitoring
+    restart: unless-stopped
+
+volumes:
+  prometheus-data: {}
+  grafana-data: {}
+  alertmanager-data: {}

@@ -24,7 +24,47 @@ router.get('/status', async (req, res) => {
                     storageItem.name,
                     params
                 );
-                metricsData[storageItem.name] = { value, block_number: blockNumber };
+
+                logger.debug(`Processing storage item: ${storageItem.name} with params: ${params}`);
+
+                if (storageItem.name === 'erasRewardPoints') {
+                    const eraType = params.includes('activeEra') ? 'activeEra' : 'currentEra';
+                    logger.debug(`Detected erasRewardPoints for eraType: ${eraType}`);
+
+                    // Initialize the era object if it doesn't exist
+                    if (!metricsData[eraType]) {
+                        metricsData[eraType] = {
+                            value: {},
+                            block_number: blockNumber
+                        };
+                    }
+
+                    // Store erasRewardPoints under a separate key
+                    metricsData[`${eraType}RewardPoints`] = {
+                        value: {
+                            erasRewardPoints: value
+                        },
+                        block_number: blockNumber
+                    };
+
+                    logger.debug(`Updated metricsData for ${eraType}RewardPoints: ${JSON.stringify(metricsData[`${eraType}RewardPoints`])}`);
+                } else if (storageItem.name === 'activeEra' || storageItem.name === 'currentEra') {
+                    const eraType = storageItem.name;
+                    if (!metricsData[eraType]) {
+                        metricsData[eraType] = {
+                            value: value,
+                            block_number: blockNumber
+                        };
+                    }
+                    logger.debug(`Updated metricsData for ${eraType}: ${JSON.stringify(metricsData[eraType])}`);
+                } else {
+                    if (!metricsData[storageItem.name]) {
+                        metricsData[storageItem.name] = { value, block_number: blockNumber };
+                    } else {
+                        metricsData[storageItem.name].value = value;
+                    }
+                    logger.debug(`Updated metricsData for ${storageItem.name}: ${JSON.stringify(metricsData[storageItem.name])}`);
+                }
             }
         }
 

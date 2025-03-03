@@ -20,15 +20,19 @@ metrics:
   - pallet: "system"
     storage_items:
       - name: "number"
-      # - name: "parentHash"
   - pallet: "staking"
     storage_items:
       - name: "activeEra"
+      - name: "erasRewardPoints"
+        params: ["activeEra"]
       - name: "currentEra"
-      # - name: "erasRewardPoints"
-      #   params: ["activeEra"]
-      # - name: "erasRewardPoints"
-      #   params: ["currentEra"]
+      - name: "erasRewardPoints"
+        params: ["currentEra"]
+
+param_resolvers:
+  staking:
+    activeEra: "unwrapOrDefault().index.toNumber()"
+    currentEra: "unwrapOrDefault().toNumber()"
 
 logging:
   level: "info"  # Options: "debug", "info", "warn", "error"
