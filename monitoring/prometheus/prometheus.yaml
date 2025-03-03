@@ -21,19 +21,12 @@ global:
 # `ext-network.yml` in your .env file.
 
 scrape_configs:
-  - job_name: 'polkadot-metrics-exporter'
+  - job_name: 'validator-metrics'
     scrape_interval: 15s
     scrape_timeout: 10s
     metrics_path: /metrics
     scheme: http
     static_configs:
       - targets:
-        - 'polkadot-metrics-exporter:8080'
+        - 'validator-metrics:8080'
 
-rule_files:
-  - '/etc/prometheus/alert_rules.yaml'
-
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ['alertmanager:9093']
