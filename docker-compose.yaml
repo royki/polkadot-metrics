@@ -1,12 +1,12 @@
-name: polkadot-metrics-exporter
+name: validator-metrics
 
 services:
   app:
     build: .
     ports:
       - "8080:8080"
-    image: polkadot-metrics-exporter:v1.0.0
-    container_name: polkadot-metrics-exporter
+    image: validator-metrics:v1.0.0
+    container_name: validator-metrics
     volumes:
       - ./config/config.yaml:/app/config/config.yaml
     environment:
@@ -29,20 +29,6 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
     restart: unless-stopped
 
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: alertmanager
-    volumes:
-      - ./monitoring/alertmanager/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml
-      - alertmanager-data:/data
-    ports:
-      - 9093:9093
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yaml'
-      - '--log.level=debug'
-      - '--storage.path=/data'
-    restart: unless-stopped
-
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -61,4 +47,3 @@ services:
 volumes:
   prometheus-data: {}
   grafana-data: {}
-  alertmanager-data: {}

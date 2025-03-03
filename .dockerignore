@@ -56,3 +56,4 @@ coverage/
 # Windows specific files
 Thumbs.db
 monitoring/
+example/

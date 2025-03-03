@@ -5,7 +5,7 @@ blockchain:
   rpc_url: "wss://rpc.polkadot.io"
 
 metrics_backend:
-  type: "none"  # Options: "prometheus", "influxdb", "none"
+  type: "prometheus"  # Options: "prometheus", "influxdb", "none"
   influxdb:
     url: "http://localhost:8086"
     token: "your-influxdb-token"
