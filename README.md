@@ -82,6 +82,11 @@ Run the application with Prometheus and Grafana using Docker Compose:
 
 - Status: <http://localhost:8080/status>
 - Metrics Exporter: <http://localhost:8080/metrics>
+
+### Prometheus & Grafana
+
+If app is running with provided Docker Compose, user can access Prometheus and Grafana at the following URLs:
+
 - Prometheus: <http://localhost:9090>
 - Grafana: <http://localhost:3000>
 
@@ -128,7 +133,7 @@ metrics:
         params: ["activeEra"]
   # Add more pallets and storage items here or in existing pallets
 
-param_resolvers:
+param_resolvers: # Parameter resolvers for storage items.
   staking:
     activeEra: "unwrapOrDefault().index.toNumber()"
     currentEra: "unwrapOrDefault().toNumber()"
@@ -153,7 +158,6 @@ The application can export various metrics from the Polkadot blockchain:
 
 ### Prometheus Queries
 
-- <http://localhost:9090/query>
 - Example queries:
   - `chain_info`
   - `session_current_index`
