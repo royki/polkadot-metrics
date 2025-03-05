@@ -1,6 +1,7 @@
 const { ApiPromise, WsProvider } = require('@polkadot/api');
 const logger = require('../utils/logger');
 const ConfigLoader = require('../config/configLoader');
+const HandlerFactory = require('../handlers/HandlerFactory');
 
 class PolkadotAPI {
     constructor(rpcUrl) {
@@ -9,6 +10,7 @@ class PolkadotAPI {
         this.isConnecting = false;
         this.configLoader = new ConfigLoader(process.env.CONFIG_PATH || 'config/config.yaml');
         this.paramResolvers = this.configLoader.getParamResolvers();
+        this.handlerFactory = null; // Will be initialized after API connection
     }
 
     async connect() {
@@ -28,7 +30,13 @@ class PolkadotAPI {
             this.api.on('disconnected', () => {
                 logger.error('Disconnected from Polkadot node');
                 this.api = null;
+                this.handlerFactory = null; // Reset handlerFactory when disconnected
             });
+
+            // Initialize handler factory after connection
+            logger.debug('Initializing HandlerFactory');
+            this.handlerFactory = new HandlerFactory(this.api);
+            logger.debug('HandlerFactory initialized successfully');
         } catch (error) {
             logger.error(`Failed to connect to Polkadot node: ${error.message}`);
             throw error;
@@ -71,7 +79,13 @@ class PolkadotAPI {
         try {
             if (!this.api) await this.connect();
 
-            // Validate pallet exists
+            // Ensure handlerFactory is initialized
+            if (!this.handlerFactory) {
+                logger.debug('HandlerFactory not initialized, initializing now');
+                this.handlerFactory = new HandlerFactory(this.api);
+            }
+
+            // Validate pallet and storage item
             if (!this.api.query[pallet]) {
                 throw new Error(`Pallet ${pallet} not found`);
             }
@@ -81,154 +95,49 @@ class PolkadotAPI {
                 throw new Error(`Invalid storage item: ${pallet}.${storageItem}`);
             }
 
-            // Check if there are explicitly defined params in the config
-            const hasDefinedParams = params && params.length > 0;
+            // Resolve any parameter references
+            const resolvedParams = await Promise.all(
+                params.map(async param => {
+                    if (typeof param === 'string' && this.paramResolvers[pallet]?.[param]) {
+                        return await this.resolveParam(pallet, param);
+                    }
+                    return param;
+                })
+            );
 
-            // Get required param count from metadata
+            // Get the appropriate handler and fetch data
             const meta = storage.creator?.meta;
-            let requiredParamCount = 0;
 
-            if (meta) {
-                if (meta.type.isDoubleMap) {
-                    requiredParamCount = 2;
-                } else if (meta.type.isMap) {
-                    requiredParamCount = 1;
-                } else if (meta.type.isNMap) {
-                    requiredParamCount = meta.type.asNMap.keyVec.length;
-                }
-            }
+            // Debug logging to troubleshoot handler factory issues
+            logger.debug(`Getting handler for ${pallet}.${storageItem}`);
+            logger.debug(`HandlerFactory exists: ${!!this.handlerFactory}`);
 
-            logger.debug(`Storage item ${pallet}.${storageItem} requires ${requiredParamCount} params, got ${params.length}`);
+            const handler = this.handlerFactory.getHandler(pallet, storageItem, meta);
+            logger.debug(`Handler acquired: ${handler.constructor.name}`);
 
-            // Special case for staking.claimedRewards with 1 parameter
-            if (pallet === 'staking' && storageItem === 'claimedRewards' && params.length === 1) {
-                try {
-                    logger.debug(`Using special handling for staking.claimedRewards with era ${params[0]}`);
-
-                    // Directly use entries() and filter them
-                    const entries = await this.api.query.staking.claimedRewards.entries();
-                    logger.debug(`Found ${entries.length} total entries for claimedRewards`);
-
-                    const era = Number(params[0]);
-                    const result = {};
-
-                    for (const [key, value] of entries) {
-                        try {
-                            // Safe access to the arguments using optional chaining and conditional checks
-                            if (key && key.args && key.args.length >= 2) {
-                                const keyEra = key.args[0].toNumber ? key.args[0].toNumber() : Number(key.args[0]);
-
-                                // Only process keys that match our target era
-                                if (keyEra === era) {
-                                    const validator = key.args[1].toString();
-                                    result[validator] = value.toJSON ? value.toJSON() : value.toString();
-                                    logger.debug(`Found match for era ${era}, validator: ${validator}`);
-                                }
-                            }
-                        } catch (err) {
-                            logger.warn(`Error processing entry for claimedRewards: ${err.message}`);
-                        }
-                    }
-
-                    logger.debug(`Found ${Object.keys(result).length} matching entries for era ${era}`);
-                    return result;
-                } catch (err) {
-                    logger.error(`Error in special handling: ${err.stack}`);
-                    // Fall back to general approach if special handling fails
-                }
-            }
-
-            // If no params provided but they're required, fetch all entries
-            if (requiredParamCount > 0 && !hasDefinedParams) {
-                logger.debug(`Fetching all entries for ${pallet}.${storageItem} (no params provided)`);
-                return await this.fetchAllEntries(storage, storageItem);
-            }
-            // If partial params provided (not enough), use entries() with partial params
-            else if (requiredParamCount > params.length && hasDefinedParams) {
-                // Most of this code won't run for staking.claimedRewards with 1 parameter
-                // due to the special case handling above
-                logger.debug(`Fetching entries for ${pallet}.${storageItem} with partial params: ${params}`);
-
-                // We'll use a more generic approach for other storage items
-                try {
-                    // Resolve the parameters
-                    const resolvedParams = await Promise.all(
-                        params.map(async param => {
-                            if (typeof param === 'string' && this.paramResolvers[pallet]?.[param]) {
-                                return await this.resolveParam(pallet, param);
-                            }
-                            return param;
-                        })
-                    );
-
-                    // Fallback to fetching all entries and filtering
-                    const entries = await this.fetchAllEntries(storage, storageItem);
-                    const filteredEntries = {};
-
-                    // Find entries where the first parameter matches
-                    Object.keys(entries).forEach(key => {
-                        const keyParts = key.split('_');
-                        let matches = true;
-
-                        // Check each param we have
-                        for (let i = 0; i < resolvedParams.length; i++) {
-                            if (String(keyParts[i]) !== String(resolvedParams[i])) {
-                                matches = false;
-                                break;
-                            }
-                        }
-
-                        // If all params match, include this entry
-                        if (matches) {
-                            filteredEntries[key] = entries[key];
-                        }
-                    });
-
-                    return filteredEntries;
-                } catch (err) {
-                    logger.error(`Error fetching with partial params: ${err.message}`);
-                    throw new Error(`Could not fetch entries with partial parameters: ${err.message}`);
-                }
-            }
-            // If all required params provided, use standard query
-            else {
-                // Standard case: resolve parameters and fetch single value
-                const resolvedParams = await Promise.all(
-                    params.map(async param => {
-                        if (typeof param === 'string' && this.paramResolvers[pallet]?.[param]) {
-                            return await this.resolveParam(pallet, param);
-                        }
-                        return param;
-                    })
-                );
-
-                logger.debug(`Fetching ${pallet}.${storageItem} with params: ${JSON.stringify(resolvedParams)}`);
-                const result = await storage(...resolvedParams);
-
-                // Add additional logging to debug null/undefined values
-                logger.debug(`API response type for ${pallet}.${storageItem}: ${result ? (typeof result) : 'null/undefined'}`);
-
-                // Handle specific return types
-                if (result === null || result === undefined) {
-                    logger.warn(`Received null/undefined response for ${pallet}.${storageItem}`);
-                    return null; // Return null instead of throwing an error
-                } else if (storageItem === 'erasRewardPoints') {
-                    return result.toJSON();
-                } else if (storageItem === 'activeEra') {
-                    return result.unwrapOrDefault().index.toNumber();
-                } else {
-                    // Add explicit null check before calling toJSON
-                    if (result.toJSON) {
-                        return result.toJSON();
-                    } else {
-                        logger.warn(`No toJSON method on result for ${pallet}.${storageItem}`);
-                        return result.toString ? result.toString() : null;
-                    }
-                }
-            }
+            return await handler.fetchData(pallet, storageItem, resolvedParams, meta);
         } catch (error) {
             logger.error(`Error fetching metric ${pallet}.${storageItem}: ${error.message}`);
-            throw error;
+
+            // Fallback to old implementation if handler approach fails
+            if (error.message.includes('getHandler is not a function')) {
+                logger.warn(`Falling back to direct query for ${pallet}.${storageItem}`);
+                try {
+                    const storage = this.api.query[pallet][storageItem];
+                    if (params && params.length > 0) {
+                        const result = await storage(...params);
+                        return result.toJSON ? result.toJSON() : result.toString();
+                    } else {
+                        const result = await storage();
+                        return result.toJSON ? result.toJSON() : result.toString();
+                    }
+                } catch (fallbackError) {
+                    logger.error(`Fallback also failed: ${fallbackError.message}`);
+                    throw fallbackError;
+                }
+            } else {
+                throw error;
+            }
         }
     }
 
