@@ -205,13 +205,25 @@ class PolkadotAPI {
                 logger.debug(`Fetching ${pallet}.${storageItem} with params: ${JSON.stringify(resolvedParams)}`);
                 const result = await storage(...resolvedParams);
 
+                // Add additional logging to debug null/undefined values
+                logger.debug(`API response type for ${pallet}.${storageItem}: ${result ? (typeof result) : 'null/undefined'}`);
+
                 // Handle specific return types
-                if (storageItem === 'erasRewardPoints') {
+                if (result === null || result === undefined) {
+                    logger.warn(`Received null/undefined response for ${pallet}.${storageItem}`);
+                    return null; // Return null instead of throwing an error
+                } else if (storageItem === 'erasRewardPoints') {
                     return result.toJSON();
                 } else if (storageItem === 'activeEra') {
                     return result.unwrapOrDefault().index.toNumber();
                 } else {
-                    return result.toJSON();
+                    // Add explicit null check before calling toJSON
+                    if (result.toJSON) {
+                        return result.toJSON();
+                    } else {
+                        logger.warn(`No toJSON method on result for ${pallet}.${storageItem}`);
+                        return result.toString ? result.toString() : null;
+                    }
                 }
             }
         } catch (error) {

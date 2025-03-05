@@ -16,14 +16,14 @@ metrics:
   # - pallet: "paraSessionInfo"
   #   storage_items:
   #     - name: "accountKeys"
-  #       params: [10456]   # Providing a specific param value
+  #       params: [10457]   # Providing a specific param value
   #     - name: "accountKeys"  # This will fetch all values (no params)
   #     - name: "palletVersion"
   #     - name: "sessions"
   #       params: [10456]
-  - pallet: "historical"
-    storage_items:
-      - name: "storedRange"
+  # - pallet: "historical"
+  #   storage_items:
+  #     - name: "storedRange"
   - pallet: "session"
     storage_items:
       - name: "currentIndex"
@@ -31,18 +31,26 @@ metrics:
   - pallet: "system"
     storage_items:
       - name: "number"
-  - pallet: "staking"
+  # - pallet: "staking"
+  #   storage_items:
+  #     - name: "activeEra"
+  #     - name: "erasRewardPoints"
+  #       params: ["activeEra"]
+  #     - name: "currentEra"
+  #     - name: "erasRewardPoints"
+  #       params: ["currentEra"]
+  #     - name: "erasTotalStake"
+  #       params: [1699]
+  #     - name: "claimedRewards"
+  #       params: [1699, "1BwjS7oyQ5EDGrdfMBgbVRAXkW5fnbWeQAYWaSCzu27dwwh"]
+  # - pallet: "balances"
+  #   storage_items:
+  #     - name: "account"
+  #       params: ["1BwjS7oyQ5EDGrdfMBgbVRAXkW5fnbWeQAYWaSCzu27dwwh"]
+  - pallet: "bounties"
     storage_items:
-      - name: "activeEra"
-      - name: "erasRewardPoints"
-        params: ["activeEra"]
-      # - name: "currentEra"
-      # - name: "erasRewardPoints"
-      #   params: ["currentEra"]
-      #   - name: "erasTotalStake"
-      #     params: [1699]
-      #   - name: "claimedRewards"
-      #     params: [1699, "1BwjS7oyQ5EDGrdfMBgbVRAXkW5fnbWeQAYWaSCzu27dwwh"]
+      - name: "bounties"
+        params: [64]
 
 param_resolvers:
   staking:
