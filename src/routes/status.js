@@ -57,6 +57,14 @@ router.get('/status', async (req, res) => {
                         };
                     }
                     logger.debug(`Updated metricsData for ${eraType}: ${JSON.stringify(metricsData[eraType])}`);
+                } else if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0) {
+                    // Handle case where we got multiple entries from storage
+                    const metricName = `${storageItem.name}_all`;
+                    metricsData[metricName] = {
+                        value: value,
+                        block_number: blockNumber
+                    };
+                    logger.debug(`Updated metricsData for ${metricName} with multiple entries`);
                 } else {
                     if (!metricsData[storageItem.name]) {
                         metricsData[storageItem.name] = { value, block_number: blockNumber };

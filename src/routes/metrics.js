@@ -80,6 +80,13 @@ router.get('/metrics', async (req, res) => {
                     for (const [validator, points] of Object.entries(value.individual)) {
                         metricsOutput += `${metricName}{chain="${chainName}",era="${eraType}",validator="${validator}"} ${points}\n`;
                     }
+                } else if (typeof value === 'object' && !Array.isArray(value)) {
+                    // Handle case where we got multiple entries from storage with params
+                    for (const [paramKey, paramValue] of Object.entries(value)) {
+                        metricsOutput += `${metricName}{chain="${chainName}",param="${paramKey}"} ${
+                            typeof paramValue === 'object' ? JSON.stringify(paramValue) : paramValue
+                        }\n`;
+                    }
                 } else {
                     metricsOutput += `${metricName}{chain="${chainName}"} ${value}\n`;
                 }

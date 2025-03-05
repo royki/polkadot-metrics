@@ -13,6 +13,17 @@ metrics_backend:
     bucket: "your-bucket"
 
 metrics:
+  # - pallet: "paraSessionInfo"
+  #   storage_items:
+  #     - name: "accountKeys"
+  #       params: [10456]   # Providing a specific param value
+  #     - name: "accountKeys"  # This will fetch all values (no params)
+  #     - name: "palletVersion"
+  #     - name: "sessions"
+  #       params: [10456]
+  - pallet: "historical"
+    storage_items:
+      - name: "storedRange"
   - pallet: "session"
     storage_items:
       - name: "currentIndex"
@@ -25,9 +36,13 @@ metrics:
       - name: "activeEra"
       - name: "erasRewardPoints"
         params: ["activeEra"]
-      - name: "currentEra"
-      - name: "erasRewardPoints"
-        params: ["currentEra"]
+      # - name: "currentEra"
+      # - name: "erasRewardPoints"
+      #   params: ["currentEra"]
+      #   - name: "erasTotalStake"
+      #     params: [1699]
+      #   - name: "claimedRewards"
+      #     params: [1699, "1BwjS7oyQ5EDGrdfMBgbVRAXkW5fnbWeQAYWaSCzu27dwwh"]
 
 param_resolvers:
   staking:
@@ -35,7 +50,7 @@ param_resolvers:
     currentEra: "unwrapOrDefault().toNumber()"
 
 logging:
-  level: "info"  # Options: "debug", "info", "warn", "error"
+  level: "debug"  # Options: "debug", "info", "warn", "error"
   log_to_file: false
   log_file: "logs/app.log"
   error_log_file: "logs/error.log"
