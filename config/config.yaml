@@ -17,7 +17,6 @@ metrics:
   #   storage_items:
   #     - name: "accountKeys"
   #       params: [10458]   # Providing a specific param value
-  #     - name: "accountKeys"  # This will fetch all values (no params)
   #     - name: "palletVersion"
   #     - name: "sessions"
   #       params: [10456]
@@ -33,7 +32,7 @@ metrics:
       - name: "number"
   - pallet: "staking"
     storage_items:
-  #     - name: "activeEra"
+      - name: "activeEra"
       - name: "erasRewardPoints"
         params: ["activeEra"]
   #     - name: "currentEra"
