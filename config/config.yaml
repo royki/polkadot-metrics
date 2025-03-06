@@ -28,8 +28,8 @@ metrics:
       - name: "currentEra"
       - name: "erasRewardPoints"
         params: ["currentEra"]
-  #     - name: "erasTotalStake"
-  #       params: [1699]
+      - name: "erasTotalStake"
+        params: [1699]
   #     - name: "claimedRewards"
   #       params: [1699, "1BwjS7oyQ5EDGrdfMBgbVRAXkW5fnbWeQAYWaSCzu27dwwh"]
   # - pallet: "paraSessionInfo"
