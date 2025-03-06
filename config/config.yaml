@@ -13,16 +13,6 @@ metrics_backend:
     bucket: "your-bucket"
 
 metrics:
-  # - pallet: "paraSessionInfo"
-  #   storage_items:
-  #     - name: "accountKeys"
-  #       params: [10458]   # Providing a specific param value
-  #     - name: "palletVersion"
-  #     - name: "sessions"
-  #       params: [10456]
-  # - pallet: "historical"
-  #   storage_items:
-  #     - name: "storedRange"
   - pallet: "session"
     storage_items:
       - name: "currentIndex"
@@ -35,13 +25,23 @@ metrics:
       - name: "activeEra"
       - name: "erasRewardPoints"
         params: ["activeEra"]
-  #     - name: "currentEra"
-  #     - name: "erasRewardPoints"
-  #       params: ["currentEra"]
+      - name: "currentEra"
+      - name: "erasRewardPoints"
+        params: ["currentEra"]
   #     - name: "erasTotalStake"
   #       params: [1699]
   #     - name: "claimedRewards"
   #       params: [1699, "1BwjS7oyQ5EDGrdfMBgbVRAXkW5fnbWeQAYWaSCzu27dwwh"]
+  # - pallet: "paraSessionInfo"
+  #   storage_items:
+  #     - name: "accountKeys"
+  #       params: [10458]   # Providing a specific param value
+  #     - name: "palletVersion"
+  #     - name: "sessions"
+  #       params: [10456]
+  # - pallet: "historical"
+  #   storage_items:
+  #     - name: "storedRange"
   # - pallet: "balances"
   #   storage_items:
   #     - name: "account"
