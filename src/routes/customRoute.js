@@ -13,12 +13,23 @@ const polkadotApi = new PolkadotAPI(rpcUrl);
 // Create dynamic routes based on config.yaml
 metricsConfig.forEach(palletConfig => {
     palletConfig.storage_items.forEach(storageItem => {
-        const routePath = `/metrics/${palletConfig.pallet}/${storageItem.name}`;
+        let routePath = `/metrics/${palletConfig.pallet}/${storageItem.name}`;
+
+        // Generate route parameters if storage item has params
+        if (storageItem.params && storageItem.params.length > 0) {
+            const paramPlaceholders = storageItem.params.map(param => `:${param}`).join('/');
+            routePath += `/${paramPlaceholders}`;
+        }
+
         logger.info(`Creating route: ${routePath}`);
 
         router.get(routePath, async (req, res) => {
             try {
-                const params = storageItem.params || [];
+                // Extract parameters from the route in the order specified in config
+                const params = storageItem.params
+                    ? storageItem.params.map(param => req.params[param])
+                    : [];
+
                 const value = await polkadotApi.fetchMetric(palletConfig.pallet, storageItem.name, params);
 
                 if (value === null || value === undefined) {
