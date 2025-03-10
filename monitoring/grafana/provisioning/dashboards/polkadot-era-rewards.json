@@ -207,10 +207,54 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "$Era{chain=\"$chain\"}",
+          "expr": "{__name__=~\"$Era\", chain=\"$chain\", param=~\"index|^$\"}",
+          "hide": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "($Era{chain=\"$chain\", param=\"start\"})/1000",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "$Era{chain=\"$chain\"} OR label_replace($Era{chain=\"$chain\", param=\"index\"}, \"param\", \"index\", \"param\", \"start\")",
+          "fullMetaSearch": false,
+          "hide": true,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "C",
+          "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "$Era{chain=\"$chain\", param=\"index\"}",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "D"
         }
       ],
       "title": "$Era",
@@ -481,7 +525,7 @@
     ]
   },
   "time": {
-    "from": "now-4h",
+    "from": "now-4m",
     "to": "now"
   },
   "timepicker": {},
