@@ -6,93 +6,161 @@ const logger = require('../utils/logger');
  */
 class MapStorageHandler extends StorageHandler {
   canHandle(pallet, storageItem, meta) {
-    return meta && meta.type && (meta.type.isMap || meta.type.isDoubleMap || meta.type.isNMap);
-  }
-
-  async fetchData(pallet, storageItem, params, meta) {
     try {
       const storage = this.api.query[pallet][storageItem];
-      const requiredParamCount = this._getRequiredParamCount(meta);
-
-      logger.debug(`MapStorageHandler: ${pallet}.${storageItem} requires ${requiredParamCount} params, got ${params.length}`);
-
-      // Full query - we have all the required parameters
-      if (params.length >= requiredParamCount) {
-        const result = await storage(...params);
-        return result && result.toJSON ? result.toJSON() : result && result.toString ? result.toString() : result;
-      }
-
-      // Partial query - we don't have all required parameters
-      // Fetch all entries and filter
-      const entries = await storage.entries();
-      const filteredEntries = {};
-
-      for (const [key, value] of entries) {
-        if (!key || !key.args) continue;
-
-        const keyParams = key.args;
-
-        // Check if the provided params match the beginning of the key params
-        let matches = true;
-        for (let i = 0; i < params.length; i++) {
-          if (i >= keyParams.length) {
-            matches = false;
-            break;
-          }
-          const keyParam = keyParams[i].toJSON ? keyParams[i].toJSON() : keyParams[i].toString();
-          if (String(keyParam) !== String(params[i])) {
-            matches = false;
-            break;
-          }
-        }
-
-        if (matches) {
-          const remainingParams = keyParams.slice(params.length);
-          const paramKey = remainingParams.length > 0
-            ? remainingParams.map(p => p.toString()).join('_')
-            : 'value';
-
-          filteredEntries[paramKey] = value && value.toJSON ? value.toJSON() : value && value.toString ? value.toString() : value;
-        }
-      }
-
-      return filteredEntries;
+      return storage && storage.meta && (
+        storage.meta.type.isMap ||
+        storage.meta.type.isDoubleMap ||
+        storage.meta.type.isNMap
+      );
     } catch (err) {
-      logger.error(`Error in MapStorageHandler for ${pallet}.${storageItem}: ${err.message}`);
-      return {};
+      return false;
     }
   }
 
-  _getRequiredParamCount(meta) {
-    if (!meta) return 0;
-    if (meta.type.isDoubleMap) return 2;
-    if (meta.type.isMap) return 1;
-    if (meta.type.isNMap && meta.type.asNMap) return meta.type.asNMap.keyVec.length;
+  /**
+   * Convert hex value to decimal string
+   */
+  convertHexToDecimal(value) {
+    if (typeof value === 'string' && value.startsWith('0x')) {
+      try {
+        return BigInt(value).toString();
+      } catch (err) {
+        logger.error(`Error converting hex to decimal: ${err.message}`);
+        return '0'; // Return 0 for invalid hex values
+      }
+    }
+    return value;
+  }
+
+  /**
+   * Process value before returning
+   */
+  processValue(value) {
+    if (!value) return null;
+
+    // Handle array values
+    if (Array.isArray(value)) {
+      return value.map(v => this.convertHexToDecimal(v));
+    }
+
+    // Handle object values
+    if (typeof value === 'object' && value !== null) {
+      const processed = {};
+      for (const [k, v] of Object.entries(value)) {
+        processed[k] = this.convertHexToDecimal(v);
+      }
+      return processed;
+    }
+
+    // Handle scalar values
+    return this.convertHexToDecimal(value);
+  }
+
+  async fetchData(pallet, storageItem, params = [], meta) {
+    try {
+      const storage = this.api.query[pallet][storageItem];
+
+      // For partial or no parameters, use entries()
+      if (params.length === 0) {
+        // No parameters - get all entries
+        const entries = await storage.entries();
+        const result = {};
+        for (const [key, value] of entries) {
+          const keyStr = key.args.map(arg => arg.toString()).join('-');
+          const processedValue = this.processValue(value.toJSON());
+          if (processedValue !== null) {
+            result[keyStr] = processedValue;
+          }
+        }
+        return result;
+      } else if (params.length === 1) {
+        // One parameter - get entry directly
+        try {
+          const result = await storage(params[0]);
+          return this.processValue(result.toJSON ? result.toJSON() : result.toString());
+        } catch (err) {
+          // If direct query fails, try entries
+          logger.debug(`Direct query failed for ${pallet}.${storageItem}, trying entries`);
+          const entries = await storage.entries();
+          const result = {};
+          for (const [key, value] of entries) {
+            const keyArgs = key.args;
+            // Match the first parameter
+            if (keyArgs[0].toString() === params[0].toString()) {
+              const keyStr = keyArgs.map(arg => arg.toString()).join('-');
+              const processedValue = this.processValue(value.toJSON());
+              if (processedValue !== null) {
+                result[keyStr] = processedValue;
+              }
+            }
+          }
+          return result;
+        }
+      }
+
+      // Full parameters - direct query
+      const result = await storage(...params);
+      return this.processValue(result.toJSON ? result.toJSON() : result.toString());
+    } catch (err) {
+      logger.error(`Error fetching data for ${pallet}.${storageItem}: ${err.message}`);
+      return null;
+    }
+  }
+
+  getRequiredParamCount(metadata) {
+    if (!metadata || !metadata.type) return 0;
+    if (metadata.type.isMap) return 1;
+    if (metadata.type.isDoubleMap) return 2;
+    if (metadata.type.isNMap) return metadata.type.asNMap.keyVec.length;
     return 0;
   }
 
   formatMetric(metricName, chainName, value, params) {
+    // Handle non-object values (direct values)
     if (typeof value !== 'object' || value === null) {
-      return `${metricName}{chain="${chainName}"} ${value}\n`;
+      const processedValue = this.convertHexToDecimal(value);
+      if (processedValue === null || processedValue === '') return '';
+      return `${metricName}{chain="${chainName}"} ${processedValue}\n`;
     }
 
+    // Handle object values
     let output = '';
-    for (const [paramKey, paramValue] of Object.entries(value)) {
-      const formattedValue = typeof paramValue === 'object'
-        ? JSON.stringify(paramValue)
-        : paramValue;
+    for (const [key, val] of Object.entries(value)) {
+      const processedValue = this.convertHexToDecimal(val);
+      if (processedValue === null || processedValue === '') continue;
 
-      output += `${metricName}{chain="${chainName}",param="${paramKey}"} ${formattedValue}\n`;
+      // Extract labels from the key
+      const keyParts = key.split('-');
+      const labels = [];
+
+      // Always add chain
+      labels.push(`chain="${chainName}"`);
+
+      // Add era if it exists (first part)
+      if (keyParts.length > 0) {
+        labels.push(`era="${keyParts[0]}"`);
+      }
+
+      // Add account if it exists (last part)
+      if (keyParts.length > 1) {
+        labels.push(`account="${keyParts[keyParts.length - 1]}"`);
+      }
+
+      // Create the metric line
+      output += `${metricName}{${labels.join(',')}} ${processedValue}\n`;
     }
-
     return output;
   }
 
   formatStatus(metricName, blockNumber, value, params) {
-    if (typeof value !== 'object' || value === null) {
+    // Process the value first
+    const processedValue = this.processValue(value);
+
+    if (typeof processedValue !== 'object' || processedValue === null) {
       return {
         [metricName]: {
-          value,
+          value: processedValue,
           block_number: blockNumber
         }
       };
@@ -100,7 +168,7 @@ class MapStorageHandler extends StorageHandler {
 
     return {
       [`${metricName}_all`]: {
-        value,
+        value: processedValue,
         block_number: blockNumber
       }
     };

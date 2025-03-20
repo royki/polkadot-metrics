@@ -28,10 +28,10 @@ metrics:
       - name: "currentEra"
       - name: "erasRewardPoints"
         params: ["currentEra"]
-  #     - name: "erasTotalStake" # TODO - Add hex-decimal metrcis support(Bug)
-  #       params: [1699]
+  #     - name: "erasTotalStake"
+  #       params: [1752]
   #     - name: "claimedRewards"
-  #       params: [1699, "1BwjS7oyQ5EDGrdfMBgbVRAXkW5fnbWeQAYWaSCzu27dwwh"]
+  #       params: [1751, "1BwjS7oyQ5EDGrdfMBgbVRAXkW5fnbWeQAYWaSCzu27dwwh"]
   # - pallet: "paraSessionInfo"
   #   storage_items:
   #     - name: "accountKeys"
