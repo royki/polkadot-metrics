@@ -9,6 +9,13 @@ class StorageHandler {
   }
 
   /**
+   * Set the API instance for this handler
+   */
+  setApi(api) {
+    this.api = api;
+  }
+
+  /**
    * Determine if this handler can process the given storage item
    */
   canHandle(pallet, storageItem, meta) {

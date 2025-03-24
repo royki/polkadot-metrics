@@ -5,10 +5,10 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 const configLoader = new ConfigLoader(process.env.CONFIG_PATH || 'config/config.yaml');
-const rpcUrl = configLoader.getRpcUrl();
+const rpcConfig = configLoader.getRpcConfig();
 const metricsConfig = configLoader.getMetrics();
 
-const polkadotApi = new PolkadotAPI(rpcUrl);
+const polkadotApi = new PolkadotAPI(rpcConfig);
 
 // Create dynamic routes based on config.yaml
 metricsConfig.forEach(palletConfig => {

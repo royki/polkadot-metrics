@@ -6,6 +6,8 @@ const logger = require('../utils/logger');
  */
 class MapStorageHandler extends StorageHandler {
   canHandle(pallet, storageItem, meta) {
+    if (!this.api) return false;
+
     try {
       const storage = this.api.query[pallet][storageItem];
       return storage && storage.meta && (
@@ -58,50 +60,40 @@ class MapStorageHandler extends StorageHandler {
   }
 
   async fetchData(pallet, storageItem, params = [], meta) {
+    if (!this.api) {
+      throw new Error('API not initialized');
+    }
+
     try {
       const storage = this.api.query[pallet][storageItem];
+      logger.debug(`Fetching entries for ${pallet}.${storageItem} with ${params.length} params`);
 
-      // For partial or no parameters, use entries()
-      if (params.length === 0) {
-        // No parameters - get all entries
-        const entries = await storage.entries();
-        const result = {};
-        for (const [key, value] of entries) {
-          const keyStr = key.args.map(arg => arg.toString()).join('-');
+      // Always use entries() for any number of parameters
+      const entries = await storage.entries();
+      const result = {};
+
+      for (const [key, value] of entries) {
+        const keyArgs = key.args;
+
+        // Filter based on provided parameters
+        let matches = true;
+        for (let i = 0; i < params.length; i++) {
+          if (params[i] && keyArgs[i].toString() !== params[i].toString()) {
+            matches = false;
+            break;
+          }
+        }
+
+        if (matches) {
+          const keyStr = keyArgs.map(arg => arg.toString()).join('-');
           const processedValue = this.processValue(value.toJSON());
           if (processedValue !== null) {
             result[keyStr] = processedValue;
           }
         }
-        return result;
-      } else if (params.length === 1) {
-        // One parameter - get entry directly
-        try {
-          const result = await storage(params[0]);
-          return this.processValue(result.toJSON ? result.toJSON() : result.toString());
-        } catch (err) {
-          // If direct query fails, try entries
-          logger.debug(`Direct query failed for ${pallet}.${storageItem}, trying entries`);
-          const entries = await storage.entries();
-          const result = {};
-          for (const [key, value] of entries) {
-            const keyArgs = key.args;
-            // Match the first parameter
-            if (keyArgs[0].toString() === params[0].toString()) {
-              const keyStr = keyArgs.map(arg => arg.toString()).join('-');
-              const processedValue = this.processValue(value.toJSON());
-              if (processedValue !== null) {
-                result[keyStr] = processedValue;
-              }
-            }
-          }
-          return result;
-        }
       }
 
-      // Full parameters - direct query
-      const result = await storage(...params);
-      return this.processValue(result.toJSON ? result.toJSON() : result.toString());
+      return result;
     } catch (err) {
       logger.error(`Error fetching data for ${pallet}.${storageItem}: ${err.message}`);
       return null;
